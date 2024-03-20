@@ -2,8 +2,6 @@
 
 set -e
 
-XCODE_PROJECT="DiffMatchPatchObjC.xcodeproj"
-SCHEME="DiffMatchPatchObjC"
 NAME="DiffMatchPatchObjC"
 
 function get_project_dir() {
@@ -25,8 +23,8 @@ function deletePreviousArtifacts() {
 
 function buildFramework() {
   xcodebuild archive \
-    -project $XCODE_PROJECT \
-    -scheme $SCHEME \
+    -workspace $NAME \
+    -scheme $NAME \
     -destination "$1" \
     -archivePath "$2" \
     SKIP_INSTALL=NO \

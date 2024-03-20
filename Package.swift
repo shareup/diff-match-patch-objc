@@ -6,6 +6,7 @@ let package = Package(
     products: [
         .library(
             name: "DiffMatchPatchObjC",
+            type: .dynamic,
             targets: ["DiffMatchPatchObjC"]),
     ],
     targets: [
