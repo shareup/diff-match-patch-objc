@@ -2,8 +2,6 @@
 
 set -e
 
-NAME="DiffMatchPatchObjC"
-
 function get_project_dir() {
   SELF=`realpath $0`
   DIR=`dirname $SELF`
@@ -15,71 +13,78 @@ function get_version() {
 }
 
 function deletePreviousArtifacts() {
-  find . -type f -name "$NAME*.xcframework" -exec rm {} +
-  find . -type f -name "$NAME*.xcframework.zip" -exec rm {} +
-  find . -type f -name "$NAME*.xcframework.zip.checksum" -exec rm {} +
+  find . -type f -name "$1*.xcframework" -exec rm {} +
+  find . -type f -name "$1*.xcframework.zip" -exec rm {} +
+  find . -type f -name "$1*.xcframework.zip.checksum" -exec rm {} +
   rm -rf .archives
 }
 
 function buildFramework() {
   xcodebuild archive \
-    -workspace $NAME \
-    -scheme $NAME \
-    -destination "$1" \
-    -archivePath "$2" \
+    -scheme $1 \
+    -destination "$2" \
+    -archivePath "$3" \
     SKIP_INSTALL=NO \
     BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+}
+
+function builtFrameworkPathForArchive() {
+  realpath "$1/.archives/$2/Products/usr/local/lib/$3.framework"
+}
+
+function dsymSymbolsPathForArchive() {
+  realpath "$1/.archives/$2/dSYMs/$3.framework.dSYM"
 }
 
 function createXCFramework() {
   xcodebuild \
     -create-xcframework \
-    -framework ".archives/$NAME-iOS.xcarchive/Products/Library/Frameworks/CWasm3.framework" \
-    -debug-symbols "$1/.archives/$NAME-iOS.xcarchive/BCSymbolMaps/9EDFC8DD-15A8-39FB-B396-190B0F458495.bcsymbolmap" \
-    -debug-symbols "$1/.archives/$NAME-iOS.xcarchive/dSYMs/$NAME.framework.dSYM" \
-    -framework ".archives/$NAME-iOS-Simulator.xcarchive/Products/Library/Frameworks/$NAME.framework" \
-    -debug-symbols "$1/.archives/$NAME-iOS-Simulator.xcarchive/dSYMs/$NAME.framework.dSYM" \
-    -framework ".archives/$NAME-macOS-Catalyst.xcarchive/Products/Library/Frameworks/$NAME.framework" \
-    -debug-symbols "$1/.archives/$NAME-macOS-Catalyst.xcarchive/dSYMs/$NAME.framework.dSYM" \
-    -framework ".archives/$NAME-macOS.xcarchive/Products/Library/Frameworks/$NAME.framework" \
-    -debug-symbols "$1/.archives/$NAME-macOS.xcarchive/dSYMs/$NAME.framework.dSYM" \
-    -output CWasm3.xcframework
+    -framework "$(builtFrameworkPathForArchive $1 $2-iOS.xcarchive $2)" \
+    -debug-symbols "$(dsymSymbolsPathForArchive $1 $2-iOS.xcarchive $2)" \
+    -framework "$(builtFrameworkPathForArchive $1 $2-iOS-Simulator.xcarchive $2)" \
+    -debug-symbols "$(dsymSymbolsPathForArchive $1 $2-iOS-Simulator.xcarchive $2)" \
+    -framework "$(builtFrameworkPathForArchive $1 $2-macOS-Catalyst.xcarchive  $2)" \
+    -debug-symbols "$(dsymSymbolsPathForArchive $1 $2-macOS-Catalyst.xcarchive $2)" \
+    -framework "$(builtFrameworkPathForArchive $1 $2-macOS.xcarchive $2)" \
+    -debug-symbols "$(dsymSymbolsPathForArchive $1 $2-macOS.xcarchive $2)" \
+    -output "$2.xcframework"
 }
 
 function zipXCFramework() {
-  ditto -c -k --sequesterRsrc --keepParent "$NAME.xcframework" "$1"
+  ditto -c -k --sequesterRsrc --keepParent "$1.xcframework" "$2"
 }
 
 function createChecksum() {
-  CHECKSUM=`swift package compute-checksum $1`
+  local checksum=`swift package compute-checksum $1`
   
-  echo "$CHECKSUM" > "$1.checksum"
+  echo "$checksum" > "$1.checksum"
   
   echo ""
   echo "🔒 $(swift package compute-checksum $1)"
 }
 
-VERSION="$(get_version)"
+name="DiffMatchPatchObjC"
+version="$(get_version)"
 
-if [ -z "$VERSION" ]; then
+if [ -z "$version" ]; then
     echo "❌️ Version must be set"
     exit -1
 fi
 
-PROJECT_DIR="$(get_project_dir)"
-pushd "$PROJECT_DIR" &>/dev/null
+project_dir="$(get_project_dir)"
+pushd "$project_dir" &>/dev/null
 
-deletePreviousArtifacts
+deletePreviousArtifacts "$name"
 mkdir .archives
 
-buildFramework "generic/platform=iOS" ".archives/$NAME-iOS"
-buildFramework "generic/platform=iOS Simulator" ".archives/$NAME-iOS-Simulator"
-buildFramework "generic/platform=macOS,variant=Mac Catalyst" ".archives/$NAME-macOS-Catalyst"
-buildFramework "generic/platform=macOS" ".archives/$NAME-macOS"
-createXCFramework $PROJECT_DIR
-ZIP_NAME="$NAME-$VERSION.xcframework.zip"
-zipXCFramework $ZIP_NAME
-createChecksum $ZIP_NAME
-rm -rf "$NAME.xcframework"
+buildFramework "$name" "generic/platform=iOS" ".archives/$name-iOS"
+buildFramework "$name" "generic/platform=iOS Simulator" ".archives/$name-iOS-Simulator"
+buildFramework "$name" "generic/platform=macOS,variant=Mac Catalyst" ".archives/$name-macOS-Catalyst"
+buildFramework "$name" "generic/platform=macOS" ".archives/$name-macOS"
+createXCFramework "$project_dir" "$name"
+zip_name="$name-$version.xcframework.zip"
+zipXCFramework "$name" "$zip_name"
+createChecksum "$zip_name"
+rm -rf "$name.xcframework"
 
 popd &>/dev/null

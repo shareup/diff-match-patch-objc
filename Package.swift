@@ -7,7 +7,8 @@ let package = Package(
         .library(
             name: "DiffMatchPatchObjC",
             type: .dynamic,
-            targets: ["DiffMatchPatchObjC"]),
+            targets: ["DiffMatchPatchObjC"]
+        ),
     ],
     targets: [
         .target(
@@ -16,6 +17,7 @@ let package = Package(
         ),
         .testTarget(
             name: "DiffMatchPatchObjCTests",
-            dependencies: ["DiffMatchPatchObjC"]),
+            dependencies: ["DiffMatchPatchObjC"]
+        ),
     ]
 )
